@@ -7,18 +7,13 @@ from collections import defaultdict
 
 # --- シフトプリセットの定義 ---
 SHIFT_PRESETS = [
-    {"name": "早番", "start_time": datetime.time(9, 0), "end_time": datetime.time(17, 0)},
-    {"name": "遅番", "start_time": datetime.time(13, 0), "end_time": datetime.time(21, 0)},
-    {"name": "通し", "start_time": datetime.time(9, 0), "end_time": datetime.time(21, 0)},
-    {"name": "中抜け", "start_time": datetime.time(10, 0), "end_time": datetime.time(19, 0)},
-    {"name": "中学生自習対応・マナビス (18時開始)", "start_time": datetime.time(18, 0), "end_time": datetime.time(21, 40)}, 
-    {"name": "速読・自習室巡回", "start_time": datetime.time(9, 0), "end_time": datetime.time(12, 30)}, 
-    {"name": "自習対応・マナビス", "start_time": datetime.time(15, 30), "end_time": datetime.time(21, 0)}, 
     {"name": "中学生自習対応・マナビス (16時半開始)", "start_time": datetime.time(16, 30), "end_time": datetime.time(21, 40)}, 
-    {"name": "中学生自習対応・マナビス (日曜昼)", "start_time": datetime.time(13, 30), "end_time": datetime.time(18, 0)},
     {"name": "小5ONLINE英語のサポート/中学生自習対応・マナビス", "start_time": datetime.time(18, 0), "end_time": datetime.time(21, 40)},
+    {"name": "中学生自習対応・マナビス (18時開始)", "start_time": datetime.time(18, 0), "end_time": datetime.time(21, 40)}, 
+    {"name": "速読・自習室巡回(土曜午前)", "start_time": datetime.time(9, 0), "end_time": datetime.time(12, 30)}, 
+    {"name": "自習対応・マナビス(土曜午後)", "start_time": datetime.time(15, 30), "end_time": datetime.time(21, 0)}, 
+    {"name": "中学生自習対応・マナビス (日曜昼)", "start_time": datetime.time(13, 30), "end_time": datetime.time(18, 0)},
 ]
-
 # --- ここからパスワード保護の関数 (Secrets利用版) ---
 def check_password():
     if "password_correct" not in st.session_state:
