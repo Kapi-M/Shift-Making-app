@@ -72,12 +72,12 @@ def generate_excel(schedule_df, summary_df):
     return output.getvalue()
 
 # --- 1. 従業員管理 ---
-st.header("1. 従業員管理")
-with st.expander("従業員を追加する"):
+st.header("1. スタッフ管理")
+with st.expander("スタッフを追加する"):
     with st.form("new_employee_form", clear_on_submit=True):
-        emp_name = st.text_input("従業員名", key="emp_name_input")
+        emp_name = st.text_input("スタッフ名", key="emp_name_input")
         desired_shifts = st.number_input("希望シフト日数", min_value=0, step=1, key="desired_shifts_input")
-        submitted_emp = st.form_submit_button("従業員を追加")
+        submitted_emp = st.form_submit_button("スタッフを追加")
         if submitted_emp and emp_name:
             emp_id = str(uuid.uuid4())
             st.session_state.employees.append({'id': emp_id, 'name': emp_name, 'desired_shifts': desired_shifts, 'available_dates': []})
@@ -97,18 +97,18 @@ if st.session_state.employees:
             if st.button(f"{employee_to_edit['name']}さんの勤務可能日を更新", key=f"update_dates_btn_{selected_emp_id_for_dates}"):
                 employee_to_edit['available_dates'] = new_available_dates
                 st.success(f"{employee_to_edit['name']}さんの勤務可能日を更新しました。")
-st.subheader("登録済み従業員リスト")
+st.subheader("登録済みスタッフリスト")
 if st.session_state.employees:
     emp_data_display = []
     for emp in st.session_state.employees:
         available_dates_str = ", ".join([d.strftime("%m/%d") for d in sorted(emp['available_dates'])]) if emp['available_dates'] else "未登録"
         emp_data_display.append({"ID": emp['id'], "名前": emp['name'], "希望日数": emp['desired_shifts'], "勤務可能日": available_dates_str})
     st.dataframe(pd.DataFrame(emp_data_display))
-    emp_to_delete_id = st.selectbox("削除する従業員を選択 (注意: 即時削除されます)", options=[None] + [emp['id'] for emp in st.session_state.employees], format_func=lambda x: "選択してください" if x is None else next(emp['name'] for emp in st.session_state.employees if emp['id'] == x), key="emp_delete_select")
-    if emp_to_delete_id and st.button("選択した従業員を削除", key="delete_emp_btn"):
+    emp_to_delete_id = st.selectbox("削除するスタッフを選択 (注意: 即時削除されます)", options=[None] + [emp['id'] for emp in st.session_state.employees], format_func=lambda x: "選択してください" if x is None else next(emp['name'] for emp in st.session_state.employees if emp['id'] == x), key="emp_delete_select")
+    if emp_to_delete_id and st.button("選択したスタッフを削除", key="delete_emp_btn"):
         st.session_state.employees = [emp for emp in st.session_state.employees if emp['id'] != emp_to_delete_id]
         st.rerun()
-else: st.info("まだ従業員が登録されていません。")
+else: st.info("まだスタッフが登録されていません。")
 
 # --- 2. タイムテーブル管理セクション ---
 st.header("2. タイムテーブル管理")
@@ -222,7 +222,7 @@ else: st.info("まだシフト枠が設定されていません。")
 # --- 3. シフト自動生成と出力 ---
 st.header("3. シフト自動生成と出力")
 if st.button("シフトを自動生成する", key="generate_shifts_btn"):
-    if not st.session_state.employees: st.error("従業員が登録されていません。")
+    if not st.session_state.employees: st.error("スタッフが登録されていません。")
     elif not st.session_state.timetable: st.error("タイムテーブルが設定されていません。")
     else:
         with st.spinner("シフトを生成中です..."):
@@ -257,7 +257,7 @@ if st.button("シフトを自動生成する", key="generate_shifts_btn"):
                 employees_map[assigned_emp_id]['actual_shifts'] += 1
                 daily_assignment_tracker[assigned_emp_id][all_positions[assigned_pos_idx]['date']] = True
             st.session_state.generated_schedule = pd.DataFrame(all_positions) if all_positions else pd.DataFrame()
-            summary_data = [{"従業員名": emp['name'], "希望シフト数": emp['desired_shifts'], "実績シフト数": employees_map[emp['id']]['actual_shifts'], "差": employees_map[emp['id']]['actual_shifts'] - emp['desired_shifts']} for emp in st.session_state.employees]
+            summary_data = [{"スタッフ名": emp['name'], "希望シフト数": emp['desired_shifts'], "実績シフト数": employees_map[emp['id']]['actual_shifts'], "差": employees_map[emp['id']]['actual_shifts'] - emp['desired_shifts']} for emp in st.session_state.employees]
             st.session_state.employee_summary = pd.DataFrame(summary_data) if summary_data else pd.DataFrame()
             st.success("シフト生成が完了しました！")
 
