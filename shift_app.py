@@ -239,22 +239,51 @@ with st.expander("シフト枠を設定・編集する"):
                 "シフト枠を設定する日付を選択", options=date_list_for_timetable,
                 format_func=lambda d: d.strftime("%Y-%m-%d (%a)"), key="date_select_for_shift"
             )
+          # (「2. タイムテーブル管理」セクション > with st.expander("シフト枠を設定・編集する"): の中)
+# ...
             if selected_date_for_shift:
                 st.markdown(f"**{selected_date_for_shift.strftime('%Y-%m-%d (%a)')} のシフト枠設定**")
+                # 既存シフト枠の表示と削除機能
                 if selected_date_for_shift in st.session_state.timetable and st.session_state.timetable[selected_date_for_shift]:
+                    st.write("--- デバッグ情報: 既存シフト枠表示開始 ---")
+                    st.write(f"対象日付: {selected_date_for_shift}")
+                    st.write(f"現在のタイムテーブル（対象日付）: {st.session_state.timetable[selected_date_for_shift]}")
+                    
                     st.write("既存のシフト枠:")
                     shifts_for_day = st.session_state.timetable[selected_date_for_shift][:] 
+                    
                     for i, shift_to_display in enumerate(shifts_for_day):
                         cols = st.columns([3,2,2,1,1])
                         cols[0].text(f"{shift_to_display['name']}")
                         cols[1].text(f"{shift_to_display['start_time'].strftime('%H:%M')}")
                         cols[2].text(f"- {shift_to_display['end_time'].strftime('%H:%M')}")
                         cols[3].text(f"{shift_to_display['required_people']}人")
-                        if cols[4].button("削除", key=f"delete_shift_{selected_date_for_shift}_{shift_to_display['id']}"):
-                            st.session_state.timetable[selected_date_for_shift] = [s for s in st.session_state.timetable[selected_date_for_shift] if s['id'] != shift_to_display['id']]
-                            if not st.session_state.timetable[selected_date_for_shift]:
-                                del st.session_state.timetable[selected_date_for_shift]
+                        
+                        # ボタンのキーをより確実にユニークにするため日付も文字列フォーマット
+                        button_key = f"delete_shift_{selected_date_for_shift.strftime('%Y%m%d')}_{shift_to_display['id']}"
+                        
+                        if cols[4].button("削除", key=button_key):
+                            st.write(f"--- デバッグ情報: 「削除」ボタン '{button_key}' が押されました ---")
+                            st.write(f"削除しようとしているシフトID: {shift_to_display['id']}")
+                            st.write(f"削除しようとしているシフト名: {shift_to_display['name']}")
+                            st.write(f"削除前のタイムテーブル（対象日付）: {st.session_state.timetable[selected_date_for_shift]}")
+
+                            # 削除ロジック
+                            original_list = st.session_state.timetable[selected_date_for_shift]
+                            filtered_list = [s for s in original_list if s['id'] != shift_to_display['id']]
+                            st.session_state.timetable[selected_date_for_shift] = filtered_list
+                            
+                            st.write(f"削除後のタイムテーブル（対象日付）: {st.session_state.timetable.get(selected_date_for_shift, '日付エントリなし')}")
+
+                            if not st.session_state.timetable.get(selected_date_for_shift): # リストが空になった場合
+                                if selected_date_for_shift in st.session_state.timetable: # キーが存在すれば削除
+                                    del st.session_state.timetable[selected_date_for_shift]
+                                st.write(f"--- デバッグ情報: 日付 {selected_date_for_shift} のエントリをtimetableから削除しました ---")
+                            
+                            st.success(f"シフト '{shift_to_display['name']}' の削除処理を実行しました。画面を再読み込みします。")
                             st.rerun()
+                    st.write("--- デバッグ情報: 既存シフト枠表示終了 ---")
+# ...
                 
                 with st.form(f"new_shift_form_{selected_date_for_shift}", clear_on_submit=True):
                     preset_options = ["手動入力"] + [p["name"] for p in SHIFT_PRESETS]
