@@ -4,7 +4,69 @@ import datetime
 import uuid # For unique IDs
 from io import BytesIO
 from collections import defaultdict
+# shift_app.py の冒頭部分の check_password 関数内を修正
 
+import streamlit as st
+
+# --- ここからパスワード保護の例 (Secrets利用版) ---
+def check_password():
+    """パスワードが正しいかチェックし、正しければTrueを返す"""
+    if "password_correct" not in st.session_state:
+        st.session_state.password_correct = False
+
+    if st.session_state.password_correct:
+        return True
+
+    # Streamlit CloudのSecretsから正しいパスワードを取得
+    # Secretsに "APP_PASSWORD" というキーで設定した場合
+    try:
+        # st.secretsが辞書のように振る舞うか、属性としてアクセスできるかによる
+        # 一般的には辞書形式でのアクセスが推奨される
+        if "APP_PASSWORD" in st.secrets:
+            correct_password_from_secrets = st.secrets["APP_PASSWORD"]
+        else:
+            # ローカル開発時など、Secretsが設定されていない場合のフォールバック
+            # またはエラー処理
+            st.error("管理者: アプリケーションのSecretsにAPP_PASSWORDが設定されていません。")
+            # ローカルテスト用にデフォルトパスワードを設定することも可能ですが、本番ではSecretsを使うべきです
+            # correct_password_from_secrets = "local_test_password" # 例: ローカルテスト用
+            return False # Secretsがない場合はログイン不可とするのが安全
+            
+    except Exception as e:
+        # st.secretsが存在しない場合 (ローカル実行時でsecretsファイルがない場合など)
+        st.warning(f"Secretsの読み込みに失敗しました。ローカル環境ですか？ ({e})")
+        # ローカルテスト用にデフォルトパスワードを設定することも可能
+        # correct_password_from_secrets = "local_test_password" # 例: ローカルテスト用
+        # 本番環境ではSecretsが設定されている前提
+        # このフォールバックはローカルでのテストを容易にするためですが、
+        # 本番デプロイ時はStreamlit Cloud側でSecretsが正しく設定されている必要があります。
+        # ここでは、ローカルでst.secretsがない場合も考慮して、仮のパスワードを設定するか、エラーにします。
+        # 今回はエラーにせず、仮のパスワード（またはログイン不可）を想定します。
+        # より安全なのは、Secretsがない場合はログインさせないことです。
+        if hasattr(st, 'secrets') and "APP_PASSWORD" in st.secrets: # 再度確認
+             correct_password_from_secrets = st.secrets["APP_PASSWORD"]
+        else: # ローカル環境やSecrets未設定を想定
+            st.info("パスワード認証のセットアップ中です。ローカルテスト用の仮パスワードを使用します。")
+            correct_password_from_secrets = "local_default" # ← ローカルテスト用の仮パスワード。本番では使われません。
+
+
+    user_password = st.text_input("パスワードを入力してください:", type="password", key="password_input_secrets")
+    if st.button("ログイン", key="login_button_secrets"):
+        if user_password == correct_password_from_secrets:
+            st.session_state.password_correct = True
+            st.rerun()
+        else:
+            st.error("パスワードが正しくありません。")
+            st.session_state.password_correct = False # 念のため
+    return False
+
+if not check_password():
+    st.stop()
+# --- パスワード保護の例ここまで ---
+
+# --- これ以降に、これまでのシフト管理アプリのメインコードを記述 ---
+# st.title("シフト管理アプリケーション (Streamlit版)")
+# ... (残りのアプリコードは変更なし) ...
 # --- アプリケーションのタイトル ---
 st.title("シフト管理アプリケーション (Streamlit版)")
 
