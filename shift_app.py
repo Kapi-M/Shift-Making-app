@@ -11,12 +11,13 @@ SHIFT_PRESETS = [
     {"name": "遅番", "start_time": datetime.time(13, 0), "end_time": datetime.time(21, 0)},
     {"name": "通し", "start_time": datetime.time(9, 0), "end_time": datetime.time(21, 0)},
     {"name": "中抜け", "start_time": datetime.time(10, 0), "end_time": datetime.time(19, 0)},
-    {"name": "中学生自習対応・マナビス (18時開始)", "start_time": datetime.time(18, 0), "end_time": datetime.time(21, 40)}, # 月火木金デフォルト用
-    {"name": "速読・自習室巡回", "start_time": datetime.time(9, 0), "end_time": datetime.time(12, 30)}, # 土曜デフォルト用
-    {"name": "自習対応・マナビス", "start_time": datetime.time(15, 30), "end_time": datetime.time(21, 0)}, # 土曜デフォルト用
-    {"name": "中学生自習対応・マナビス (16時半開始)", "start_time": datetime.time(16, 30), "end_time": datetime.time(21, 40)},
-    # 日曜日のデフォルトシフト用の新しいプリセット
+    {"name": "中学生自習対応・マナビス (18時開始)", "start_time": datetime.time(18, 0), "end_time": datetime.time(21, 40)}, 
+    {"name": "速読・自習室巡回", "start_time": datetime.time(9, 0), "end_time": datetime.time(12, 30)}, 
+    {"name": "自習対応・マナビス", "start_time": datetime.time(15, 30), "end_time": datetime.time(21, 0)}, 
+    {"name": "中学生自習対応・マナビス (16時半開始)", "start_time": datetime.time(16, 30), "end_time": datetime.time(21, 40)}, # 水曜デフォルト用
     {"name": "中学生自習対応・マナビス (日曜昼)", "start_time": datetime.time(13, 30), "end_time": datetime.time(18, 0)},
+    # 木曜日の新しいデフォルトシフト用のプリセット
+    {"name": "小5ONLINE英語のサポート/中学生自習対応・マナビス", "start_time": datetime.time(18, 0), "end_time": datetime.time(21, 40)},
     # 他にも必要なプリセットがあれば追加
 ]
 
@@ -66,7 +67,7 @@ if not check_password():
 
 
 # --- アプリケーションのタイトル ---
-st.title("シフト管理アプリケーション")
+st.title("シフト管理アプリケーション (Streamlit版)")
 
 # --- 初期化: st.session_stateに必要なキーが存在しない場合に設定 ---
 if 'employees' not in st.session_state:
@@ -175,6 +176,7 @@ st.header("2. タイムテーブル管理")
 st.subheader("スケジュール期間設定")
 col_period1, col_period2 = st.columns(2)
 period_changed = False
+# st.session_stateから現在の期間を読み込む
 current_start = st.session_state.schedule_period_start
 current_end = st.session_state.schedule_period_end
 
@@ -183,20 +185,19 @@ with col_period1:
 with col_period2:
     new_period_end = st.date_input("終了日", value=current_end, key="period_end_input")
 
+# 期間が変更されたかチェック
 if new_period_start != current_start or new_period_end != current_end:
     st.session_state.schedule_period_start = new_period_start
     st.session_state.schedule_period_end = new_period_end
-    period_changed = True # 期間変更フラグ
+    period_changed = True 
 
 # --- デフォルトシフト適用ロジック ---
-# スケジュール期間が正しく設定されている場合のみ実行
 if st.session_state.schedule_period_start <= st.session_state.schedule_period_end:
-    # デフォルトシフト設定 (プリセット名, 必要人数)
     default_shifts_config = {
         0: [("中学生自習対応・マナビス (18時開始)", 1)],  # Monday
         1: [("中学生自習対応・マナビス (18時開始)", 1)],  # Tuesday
-        2: [],  # Wednesday - no defaults
-        3: [("中学生自習対応・マナビス (18時開始)", 1)],  # Thursday
+        2: [("中学生自習対応・マナビス (16時半開始)", 1)],  # Wednesday (NEW)
+        3: [("小5ONLINE英語のサポート/中学生自習対応・マナビス", 1)],  # Thursday (MODIFIED)
         4: [("中学生自習対応・マナビス (18時開始)", 1)],  # Friday
         5: [("速読・自習室巡回", 1), ("自習対応・マナビス", 1)],  # Saturday
         6: [("中学生自習対応・マナビス (日曜昼)", 1)]  # Sunday
@@ -204,30 +205,25 @@ if st.session_state.schedule_period_start <= st.session_state.schedule_period_en
 
     date_to_scan = st.session_state.schedule_period_start
     while date_to_scan <= st.session_state.schedule_period_end:
-        # その日にまだシフトが設定されていなければデフォルトを適用
-        if not st.session_state.timetable.get(date_to_scan):
-            day_of_week = date_to_scan.weekday() # Monday is 0 and Sunday is 6
+        if not st.session_state.timetable.get(date_to_scan): # その日にシフトがなければデフォルト適用
+            day_of_week = date_to_scan.weekday()
             default_presets_for_day = default_shifts_config.get(day_of_week, [])
-
-            if default_presets_for_day: # この曜日にデフォルト設定がある場合
-                st.session_state.timetable[date_to_scan] = [] # 日付エントリを初期化
+            if default_presets_for_day:
+                st.session_state.timetable[date_to_scan] = [] 
                 for preset_name, req_people in default_presets_for_day:
                     preset_details = next((p for p in SHIFT_PRESETS if p["name"] == preset_name), None)
                     if preset_details:
                         new_default_shift = {
-                            'id': str(uuid.uuid4()),
-                            'name': preset_details["name"],
-                            'start_time': preset_details["start_time"],
-                            'end_time': preset_details["end_time"],
+                            'id': str(uuid.uuid4()), 'name': preset_details["name"],
+                            'start_time': preset_details["start_time"], 'end_time': preset_details["end_time"],
                             'required_people': req_people
                         }
                         st.session_state.timetable[date_to_scan].append(new_default_shift)
                     else:
-                        # この警告はアプリのUIに出る。開発者向けにはログやst.exceptionも検討
                         st.warning(f"デフォルト設定エラー: プリセット '{preset_name}' がSHIFT_PRESETSリストに見つかりません。")
         date_to_scan += datetime.timedelta(days=1)
 
-if period_changed: # 期間が変更された場合のみ再実行してUIを更新
+if period_changed: 
     st.rerun()
 
 st.info(f"現在のスケジュール期間: {st.session_state.schedule_period_start.strftime('%Y-%m-%d')} ～ {st.session_state.schedule_period_end.strftime('%Y-%m-%d')}")
@@ -245,12 +241,9 @@ with st.expander("シフト枠を設定・編集する"):
             )
             if selected_date_for_shift:
                 st.markdown(f"**{selected_date_for_shift.strftime('%Y-%m-%d (%a)')} のシフト枠設定**")
-                # 既存シフト枠の表示と削除機能
                 if selected_date_for_shift in st.session_state.timetable and st.session_state.timetable[selected_date_for_shift]:
                     st.write("既存のシフト枠:")
-                    # 削除操作はst.formの外で行う必要がある場合があるため、注意。
-                    # ここでは各シフトに削除ボタンを配置
-                    shifts_for_day = st.session_state.timetable[selected_date_for_shift][:] # コピーしてイテレート
+                    shifts_for_day = st.session_state.timetable[selected_date_for_shift][:] 
                     for i, shift_to_display in enumerate(shifts_for_day):
                         cols = st.columns([3,2,2,1,1])
                         cols[0].text(f"{shift_to_display['name']}")
@@ -263,7 +256,6 @@ with st.expander("シフト枠を設定・編集する"):
                                 del st.session_state.timetable[selected_date_for_shift]
                             st.rerun()
                 
-                # 新しいシフト枠追加フォーム
                 with st.form(f"new_shift_form_{selected_date_for_shift}", clear_on_submit=True):
                     preset_options = ["手動入力"] + [p["name"] for p in SHIFT_PRESETS]
                     selected_preset_name = st.selectbox(
@@ -271,11 +263,9 @@ with st.expander("シフト枠を設定・編集する"):
                         options=preset_options,
                         key=f"preset_select_{selected_date_for_shift}"
                     )
-
                     final_shift_name_manual = "" 
                     default_manual_start_time = datetime.time(9, 0)
                     default_manual_end_time = datetime.time(17, 0)
-                    
                     final_start_time_input_val = default_manual_start_time
                     final_end_time_input_val = default_manual_end_time
 
@@ -303,7 +293,6 @@ with st.expander("シフト枠を設定・編集する"):
                         actual_shift_name = ""
                         actual_start_time = None
                         actual_end_time = None
-
                         if selected_preset_name == "手動入力":
                             actual_shift_name = final_shift_name_manual
                             actual_start_time = final_start_time_input_val
@@ -320,11 +309,9 @@ with st.expander("シフト枠を設定・編集する"):
                             else: 
                                 st.error("プリセットデータの取得に失敗しました。")
                                 st.stop()
-                        
                         if actual_start_time is None or actual_end_time is None:
                              st.error("開始時刻または終了時刻が設定されていません。")
                              st.stop()
-
                         if actual_start_time >= actual_end_time:
                             st.error("終了時刻は開始時刻より後に設定してください。")
                         else:
@@ -345,12 +332,10 @@ with st.expander("シフト枠を設定・編集する"):
 st.subheader("設定済みタイムテーブル概要")
 if st.session_state.timetable:
     timetable_display_data = []
-    # 表示する際も期間内のものだけを対象とする
     active_dates_in_period = [st.session_state.schedule_period_start + datetime.timedelta(days=x) for x in range((st.session_state.schedule_period_end - st.session_state.schedule_period_start).days + 1)]
     sorted_timetable_keys = sorted(st.session_state.timetable.keys())
-
     for date_key in sorted_timetable_keys:
-        if date_key in active_dates_in_period: # 期間内の日付のみ表示
+        if date_key in active_dates_in_period: 
             for shift in st.session_state.timetable[date_key]:
                 timetable_display_data.append({
                     "日付": date_key.strftime("%Y-%m-%d (%a)"), "シフト名": shift['name'],
@@ -377,11 +362,9 @@ if st.button("シフトを自動生成する", key="generate_shifts_btn"):
             for emp_id in employees_map: 
                 employees_map[emp_id]['actual_shifts'] = 0
             all_positions = []
-            # タイムテーブルのデータも期間内のものだけを対象とする
             active_dates_in_timetable_keys = [d for d in st.session_state.timetable.keys() if st.session_state.schedule_period_start <= d <= st.session_state.schedule_period_end]
-
-            for date_val in sorted(active_dates_in_timetable_keys): # ソートして処理順を一定に
-                if date_val in st.session_state.timetable: # 再度確認
+            for date_val in sorted(active_dates_in_timetable_keys): 
+                if date_val in st.session_state.timetable: 
                     for shift_slot in st.session_state.timetable[date_val]:
                         for i in range(shift_slot['required_people']):
                             all_positions.append({
@@ -391,49 +374,30 @@ if st.button("シフトを自動生成する", key="generate_shifts_btn"):
                                 'assigned_employee_id': None, 'assigned_employee_name': "未割当"
                             })
             daily_assignment_tracker = defaultdict(lambda: defaultdict(bool)) 
-            
-            # MAX_ITERATIONSは全ポジション数に基づくなど、より適切な設定を検討
             num_total_positions = len(all_positions)
-            MAX_ITERATIONS = num_total_positions * 2 # 全ポジションを埋める試行回数の目安
-
+            MAX_ITERATIONS = num_total_positions * 2 
             for iteration in range(MAX_ITERATIONS):
                 best_assignment = None
                 max_need_score = -float('inf') 
                 unassigned_positions_indices = [idx for idx, pos in enumerate(all_positions) if pos['assigned_employee_id'] is None]
                 if not unassigned_positions_indices: break 
-                
-                # どのポジションに誰を割り当てるか、候補を評価
-                # ここでは、最もシフトを必要としている従業員を、空いている任意のスロットに割り当てる戦略
-                # より高度な戦略も考えられる（例：残りの勤務可能日が少ない従業員を優先、など）
                 possible_assignments = []
                 for emp_id, emp_details in employees_map.items():
                     need_score = emp_details['desired_shifts'] - emp_details['actual_shifts']
-                    if need_score <=0 and emp_details['desired_shifts'] > 0 : #既に希望数満たしているか、そもそも希望がない人は後回し（または考慮外）にしたい場合
-                        # ただし、必要人数を満たすためには希望数を超えても割り当てる必要がある場合もある
-                        pass
-
                     for pos_idx in unassigned_positions_indices:
                         current_pos = all_positions[pos_idx]
                         date_of_pos = current_pos['date']
                         if date_of_pos in emp_details['available_dates'] and not daily_assignment_tracker[emp_id][date_of_pos]:
-                            # (need_score, 従業員の残り勤務可能日の少なさ)などでソートするなども考えられる
                             possible_assignments.append({'emp_id': emp_id, 'pos_idx': pos_idx, 'need_score': need_score})
-                
-                if not possible_assignments: break # 割り当て可能な組み合わせがない
-
-                # 最も必要スコアが高い割り当てを選択
+                if not possible_assignments: break 
                 possible_assignments.sort(key=lambda x: x['need_score'], reverse=True)
-                
-                # ここで、同じスコアの場合のタイブレークを入れることもできる
                 best_assignment_info = possible_assignments[0]
                 assigned_emp_id = best_assignment_info['emp_id']
                 assigned_pos_idx = best_assignment_info['pos_idx']
-
                 all_positions[assigned_pos_idx]['assigned_employee_id'] = assigned_emp_id
                 all_positions[assigned_pos_idx]['assigned_employee_name'] = employees_map[assigned_emp_id]['name']
                 employees_map[assigned_emp_id]['actual_shifts'] += 1
                 daily_assignment_tracker[assigned_emp_id][all_positions[assigned_pos_idx]['date']] = True
-                
             st.session_state.generated_schedule = pd.DataFrame(all_positions)
             summary_data = []
             for emp_id, emp_details in employees_map.items():
@@ -447,21 +411,17 @@ if st.button("シフトを自動生成する", key="generate_shifts_btn"):
 if st.session_state.generated_schedule is not None:
     st.subheader("生成されたシフト表")
     display_df = st.session_state.generated_schedule.copy()
-    # 日付をdatetimeオブジェクトのままソートしてから文字列に変換する
     if not display_df.empty:
-        display_df = display_df.sort_values(by=['date', 'start_time', 'shift_name']) # ソート順を調整
+        display_df = display_df.sort_values(by=['date', 'start_time', 'shift_name']) 
         display_df['date_str'] = display_df['date'].apply(lambda x: x.strftime("%Y-%m-%d (%a)"))
         display_df['start_time_str'] = display_df['start_time'].apply(lambda x: x.strftime("%H:%M"))
         display_df['end_time_str'] = display_df['end_time'].apply(lambda x: x.strftime("%H:%M"))
-
         try:
             schedule_pivot = display_df.pivot_table(
-                index=['date_str', 'shift_name', 'start_time_str', 'end_time_str'], # 文字列化したものでピボット
+                index=['date_str', 'shift_name', 'start_time_str', 'end_time_str'], 
                 columns='position_index', values='assigned_employee_name', aggfunc='first' 
             ).reset_index()
-            # インデックス名も適切に設定し直す
             schedule_pivot = schedule_pivot.rename(columns={'date_str':'日付', 'shift_name':'シフト名', 'start_time_str':'開始', 'end_time_str':'終了'})
-
             num_담당자_cols = len([col for col in schedule_pivot.columns if isinstance(col, int)])
             rename_cols = {i: f'担当者{i+1}' for i in range(num_담당자_cols)}
             schedule_pivot = schedule_pivot.rename(columns=rename_cols)
