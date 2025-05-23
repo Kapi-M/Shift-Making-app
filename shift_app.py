@@ -78,7 +78,6 @@ def generate_excel(schedule_df, summary_df):
 
 # --- 1. 従業員管理 ---
 st.header("1. 従業員管理")
-# (従業員管理のUIコードは変更なしなので省略しています... 前回のコードを参照してください)
 with st.expander("従業員を追加する"):
     with st.form("new_employee_form", clear_on_submit=True):
         emp_name = st.text_input("従業員名", key="emp_name_input")
@@ -116,39 +115,29 @@ if st.session_state.employees:
         st.rerun()
 else: st.info("まだ従業員が登録されていません。")
 
-
 # --- 2. タイムテーブル管理セクション ---
 st.header("2. タイムテーブル管理")
 st.subheader("スケジュール期間設定")
 col_period1, col_period2 = st.columns(2)
-period_actually_changed = False # このランで期間が実際に変更されたかどうかのフラグ
-
-# st.session_stateから現在の期間を読み込む (入力ウィジェットのデフォルト値用)
+period_actually_changed = False 
 initial_period_start = st.session_state.schedule_period_start
 initial_period_end = st.session_state.schedule_period_end
-
 with col_period1:
     new_period_start_input = st.date_input("開始日", value=initial_period_start, key="period_start_input")
 with col_period2:
     new_period_end_input = st.date_input("終了日", value=initial_period_end, key="period_end_input")
-
-# 期間が変更されたかチェック
 if new_period_start_input != initial_period_start or new_period_end_input != initial_period_end:
     st.session_state.schedule_period_start = new_period_start_input
     st.session_state.schedule_period_end = new_period_end_input
     period_actually_changed = True 
-
-# --- デフォルトシフト適用ロジック (期間が実際に変更された場合のみ実行) ---
 if period_actually_changed:
     if st.session_state.schedule_period_start <= st.session_state.schedule_period_end:
         default_shifts_config = {
-            0: [("中学生自習対応・マナビス (18時開始)", 1)],  # Monday
-            1: [("中学生自習対応・マナビス (18時開始)", 1)],  # Tuesday
-            2: [("中学生自習対応・マナビス (16時半開始)", 1)],  # Wednesday
-            3: [("小5ONLINE英語のサポート/中学生自習対応・マナビス", 1)],  # Thursday
-            4: [("中学生自習対応・マナビス (18時開始)", 1)],  # Friday
-            5: [("速読・自習室巡回", 1), ("自習対応・マナビス", 1)],  # Saturday
-            6: [("中学生自習対応・マナビス (日曜昼)", 1)]  # Sunday
+            0: [("中学生自習対応・マナビス (18時開始)", 1)], 1: [("中学生自習対応・マナビス (18時開始)", 1)], 
+            2: [("中学生自習対応・マナビス (16時半開始)", 1)], 3: [("小5ONLINE英語のサポート/中学生自習対応・マナビス", 1)], 
+            4: [("中学生自習対応・マナビス (18時開始)", 1)], 
+            5: [("速読・自習室巡回", 1), ("自習対応・マナビス", 1)], 
+            6: [("中学生自習対応・マナビス (日曜昼)", 1)]
         }
         date_to_scan = st.session_state.schedule_period_start
         while date_to_scan <= st.session_state.schedule_period_end:
@@ -160,30 +149,19 @@ if period_actually_changed:
                     for preset_name, req_people in default_presets_for_day:
                         preset_details = next((p for p in SHIFT_PRESETS if p["name"] == preset_name), None)
                         if preset_details:
-                            new_default_shift = {
-                                'id': str(uuid.uuid4()), 'name': preset_details["name"],
-                                'start_time': preset_details["start_time"], 'end_time': preset_details["end_time"],
-                                'required_people': req_people
-                            }
+                            new_default_shift = {'id': str(uuid.uuid4()), 'name': preset_details["name"], 'start_time': preset_details["start_time"], 'end_time': preset_details["end_time"], 'required_people': req_people}
                             st.session_state.timetable[date_to_scan].append(new_default_shift)
-                        else:
-                            st.warning(f"デフォルト設定エラー(期間変更時): プリセット '{preset_name}' が見つかりません。")
+                        else: st.warning(f"デフォルト設定エラー(期間変更時): プリセット '{preset_name}' が見つかりません。")
             date_to_scan += datetime.timedelta(days=1)
-    st.rerun() # 期間変更とデフォルト適用の反映のため再実行
-
+    st.rerun() 
 st.info(f"現在のスケジュール期間: {st.session_state.schedule_period_start.strftime('%Y-%m-%d')} ～ {st.session_state.schedule_period_end.strftime('%Y-%m-%d')}")
-
 with st.expander("シフト枠を設定・編集する"):
-    if st.session_state.schedule_period_start > st.session_state.schedule_period_end:
-        st.error("スケジュール期間の終了日は開始日以降に設定してください。")
+    if st.session_state.schedule_period_start > st.session_state.schedule_period_end: st.error("スケジュール期間の終了日は開始日以降に設定してください。")
     else:
         num_days = (st.session_state.schedule_period_end - st.session_state.schedule_period_start).days + 1
         if num_days > 0 :
             date_list_for_timetable = [st.session_state.schedule_period_start + datetime.timedelta(days=x) for x in range(num_days)]
-            selected_date_for_shift = st.selectbox(
-                "シフト枠を設定する日付を選択", options=date_list_for_timetable,
-                format_func=lambda d: d.strftime("%Y-%m-%d (%a)"), key="date_select_for_shift"
-            )
+            selected_date_for_shift = st.selectbox("シフト枠を設定する日付を選択", options=date_list_for_timetable, format_func=lambda d: d.strftime("%Y-%m-%d (%a)"), key="date_select_for_shift")
             if selected_date_for_shift:
                 st.markdown(f"**{selected_date_for_shift.strftime('%Y-%m-%d (%a)')} のシフト枠設定**")
                 if selected_date_for_shift in st.session_state.timetable and st.session_state.timetable[selected_date_for_shift]:
@@ -199,16 +177,13 @@ with st.expander("シフト枠を設定・編集する"):
                         if cols[4].button("削除", key=button_key):
                             st.session_state.timetable[selected_date_for_shift] = [s for s in st.session_state.timetable[selected_date_for_shift] if s['id'] != shift_to_display['id']]
                             if not st.session_state.timetable.get(selected_date_for_shift):
-                                if selected_date_for_shift in st.session_state.timetable:
-                                    del st.session_state.timetable[selected_date_for_shift]
+                                if selected_date_for_shift in st.session_state.timetable: del st.session_state.timetable[selected_date_for_shift]
                             st.rerun()
-                
                 with st.form(f"new_shift_form_{selected_date_for_shift}", clear_on_submit=True):
                     preset_options = ["手動入力"] + [p["name"] for p in SHIFT_PRESETS]
                     selected_preset_name = st.selectbox("シフトプリセットを選択 (または「手動入力」)", options=preset_options, key=f"preset_select_{selected_date_for_shift}")
                     final_shift_name_manual, default_manual_start_time, default_manual_end_time = "", datetime.time(9,0), datetime.time(17,0)
                     final_start_time_input_val, final_end_time_input_val = default_manual_start_time, default_manual_end_time
-
                     if selected_preset_name == "手動入力":
                         final_shift_name_manual = st.text_input("シフト名", key=f"manual_shift_name_{selected_date_for_shift}")
                         col_t1, col_t2 = st.columns(2)
@@ -217,13 +192,9 @@ with st.expander("シフト枠を設定・編集する"):
                     else:
                         preset_details = next((p for p in SHIFT_PRESETS if p["name"] == selected_preset_name), None)
                         if preset_details: st.markdown(f"**選択中プリセット:** {preset_details['name']} ({preset_details['start_time'].strftime('%H:%M')} - {preset_details['end_time'].strftime('%H:%M')})")
-                        else: # Should not happen if SHIFT_PRESETS is consistent
-                            st.error("選択されたプリセット情報が見つかりません。「手動入力」を選択してください。")
-                            selected_preset_name = "手動入力" # Fallback to manual
-
+                        else: st.error("選択されたプリセット情報が見つかりません。「手動入力」を選択してください。"); selected_preset_name = "手動入力" 
                     required_people = st.number_input("必要人数", min_value=1, step=1, key=f"req_people_{selected_date_for_shift}")
                     submitted_shift = st.form_submit_button("このシフト枠を追加")
-
                     if submitted_shift:
                         act_name, act_start, act_end = "", None, None
                         if selected_preset_name == "手動入力":
@@ -233,18 +204,14 @@ with st.expander("シフト枠を設定・編集する"):
                             preset = next((p for p in SHIFT_PRESETS if p["name"] == selected_preset_name), None)
                             if preset: act_name, act_start, act_end = preset["name"], preset["start_time"], preset["end_time"]
                             else: st.error("プリセットデータの再取得に失敗。"); st.stop()
-                        
                         if act_start is None or act_end is None: st.error("時刻が未設定です。"); st.stop()
                         if act_start >= act_end: st.error("終了時刻は開始時刻より後に。"); st.stop()
-                        
                         new_shift = {'id': str(uuid.uuid4()), 'name': act_name, 'start_time': act_start, 'end_time': act_end, 'required_people': required_people}
                         if selected_date_for_shift not in st.session_state.timetable: st.session_state.timetable[selected_date_for_shift] = []
                         st.session_state.timetable[selected_date_for_shift].append(new_shift)
                         st.success(f"{selected_date_for_shift.strftime('%Y-%m-%d')}に「{act_name}」シフトを追加。"); st.rerun()
         else: st.warning("スケジュール期間を正しく設定してください。")
-
 st.subheader("設定済みタイムテーブル概要")
-# (タイムテーブル概要表示コードは変更なしなので省略... 前回のコードを参照)
 if st.session_state.timetable:
     timetable_display_data = []
     active_dates_in_period = [st.session_state.schedule_period_start + datetime.timedelta(days=x) for x in range((st.session_state.schedule_period_end - st.session_state.schedule_period_start).days + 1)] if st.session_state.schedule_period_start <= st.session_state.schedule_period_end else []
@@ -259,7 +226,6 @@ else: st.info("まだシフト枠が設定されていません。")
 
 # --- 3. シフト自動生成と出力 ---
 st.header("3. シフト自動生成と出力")
-# (シフト自動生成と出力コードは変更なしなので省略... 前回のコードを参照)
 if st.button("シフトを自動生成する", key="generate_shifts_btn"):
     if not st.session_state.employees: st.error("従業員が登録されていません。")
     elif not st.session_state.timetable: st.error("タイムテーブルが設定されていません。")
@@ -295,7 +261,7 @@ if st.button("シフトを自動生成する", key="generate_shifts_btn"):
                 all_positions[assigned_pos_idx]['assigned_employee_name'] = employees_map[assigned_emp_id]['name']
                 employees_map[assigned_emp_id]['actual_shifts'] += 1
                 daily_assignment_tracker[assigned_emp_id][all_positions[assigned_pos_idx]['date']] = True
-            st.session_state.generated_schedule = pd.DataFrame(all_positions) if all_positions else pd.DataFrame() # 空の場合も考慮
+            st.session_state.generated_schedule = pd.DataFrame(all_positions) if all_positions else pd.DataFrame()
             summary_data = [{"従業員名": emp['name'], "希望シフト数": emp['desired_shifts'], "実績シフト数": employees_map[emp['id']]['actual_shifts'], "差": employees_map[emp['id']]['actual_shifts'] - emp['desired_shifts']} for emp in st.session_state.employees]
             st.session_state.employee_summary = pd.DataFrame(summary_data) if summary_data else pd.DataFrame()
             st.success("シフト生成が完了しました！")
@@ -315,7 +281,13 @@ if st.session_state.generated_schedule is not None:
             schedule_pivot = schedule_pivot.rename(columns={i: f'担当者{i+1}' for i in range(num_cols)})
             st.dataframe(schedule_pivot)
             excel_data = generate_excel(schedule_pivot, st.session_state.employee_summary)
-            st.download_button(label="Excelファイルとしてダウンロード", data=excel_data, file_name=f"shift_schedule_{datetime.date.today().strftime('%Y%m%d')}.xlsx', mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="download_excel_btn")
+            st.download_button(
+                label="Excelファイルとしてダウンロード", 
+                data=excel_data, 
+                file_name=f"shift_schedule_{datetime.date.today().strftime('%Y%m%d')}.xlsx", # 修正箇所
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                key="download_excel_btn"
+            )
         except Exception as e:
             st.error(f"シフト表の表示整形中にエラーが発生しました: {e}")
             st.dataframe(display_df[['date_str', 'shift_name', 'start_time_str', 'end_time_str', 'assigned_employee_name']]) 
